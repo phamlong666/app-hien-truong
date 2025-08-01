@@ -1,0 +1,8 @@
+streamlit
+gspread
+oauth2client
+pydrive
+pandas
+Pillow
+folium
+streamlit_folium
