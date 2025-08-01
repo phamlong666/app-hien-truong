@@ -1,205 +1,110 @@
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+import os
 
-# Cấu hình Google Sheets và Google Drive
-# Vui lòng thay thế 'your_service_account_key.json' bằng tên file key của bạn.
-# Bạn cần tạo file này từ Google Cloud Console và chia sẻ quyền truy cập Google Sheet cho email của service account đó.
-GDRIVE_CLIENT_SECRET = 'your_service_account_key.json'
-SPREADSHEET_NAME = 'FieldDataCollection'
-WORKSHEET_NAME = 'Sheet1'
-SPREADSHEET_AUTH_NAME = 'UserAuth'
-WORKSHEET_AUTH_NAME = 'Sheet1'
-
-# Cấu hình email
-SENDER_EMAIL = 'your_email@gmail.com' # Thay bằng email của bạn
-SENDER_PASSWORD = 'your_password' # Thay bằng mật khẩu ứng dụng của bạn
-
-# Hàm để xác thực và kết nối đến Google Sheets
-@st.cache_resource
-def get_gspread_client():
-    try:
-        # Sử dụng service account để xác thực
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_name(GDRIVE_CLIENT_SECRET, scope)
-        client = gspread.authorize(creds)
-        return client
-    except Exception as e:
-        st.error(f"Lỗi kết nối Google Sheets: {e}")
-        return None
-
-# Hàm để kết nối đến Google Drive (để tải ảnh lên)
-@st.cache_resource
-def get_drive_client():
-    try:
-        gauth = GoogleAuth()
-        # Xác thực với service account
-        gauth.LoadCredentialsFile(GDRIVE_CLIENT_SECRET)
-        if gauth.access_token_expired:
-            gauth.Refresh()
-        drive = GoogleDrive(gauth)
-        return drive
-    except Exception as e:
-        st.error(f"Lỗi kết nối Google Drive: {e}")
-        return None
-
-# Hàm để tải ảnh lên Google Drive và trả về link
-def upload_image_to_drive(drive_client, file_obj):
-    if not drive_client:
-        return None
-    try:
-        # Tạo file trên Google Drive
-        gfile = drive_client.CreateFile({'title': file_obj.name})
-        gfile.Upload()
-        # Trả về link để xem hoặc chia sẻ
-        return gfile['alternateLink']
-    except Exception as e:
-        st.error(f"Lỗi tải ảnh lên Google Drive: {e}")
-        return None
-
-# Hàm để gửi email (được làm đơn giản cho mục đích minh họa)
-def send_reset_email(to_email, username, password):
-    # Đây là một hàm giả lập, bạn cần dùng thư viện như smtplib để gửi email thực tế
-    st.info(f"Mật khẩu của bạn là: {password}. Email đã được gửi đến {to_email}")
-
-# Khởi tạo client
-gc = get_gspread_client()
-drive = get_drive_client()
-
-# --- Cấu hình trang ---
+# Cấu hình
 st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 st.title("📋 Ứng dụng thu thập thông tin hiện trường")
-st.markdown("**Phiên bản mẫu – Mắt Nâu hỗ trợ Đội quản lý Điện lực khu vực Định Hóa**")
+st.markdown("**Phiên bản có xác thực người dùng – Mắt Nâu hỗ trợ Đội quản lý Điện lực khu vực Định Hóa**")
 
-# Khởi tạo session state cho trạng thái đăng nhập
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
+# Danh sách tài khoản tạm thời (có thể kết nối Google Sheet hoặc DB sau)
+users = {
+    "npc\\longph": "admin123",
+    "cnv01": "123456",
+    "cnv02": "123456"
+}
 
-# Màn hình đăng nhập
-if not st.session_state['logged_in']:
-    st.markdown("### 🔑 Đăng nhập")
-    with st.form("login_form"):
-        username = st.text_input("👤 USE", placeholder="Nhập tên đăng nhập")
-        password = st.text_input("🔒 Mật khẩu", type="password", placeholder="Nhập mật khẩu")
-        col1, col2 = st.columns(2)
-        with col1:
-            login_button = st.form_submit_button("✅ Đăng nhập")
-        with col2:
-            forgot_password_button = st.form_submit_button("❓ Quên mật khẩu")
+# Tạo thư mục lưu ảnh/video nếu chưa có
+UPLOAD_DIR = "uploaded_files"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-    if login_button:
-        # Kiểm tra thông tin đăng nhập
-        if gc:
-            try:
-                sh = gc.open(SPREADSHEET_AUTH_NAME)
-                worksheet = sh.worksheet(WORKSHEET_AUTH_NAME)
-                users = worksheet.get_all_records()
-                valid_user = False
-                for user_record in users:
-                    if user_record['USE'] == username and user_record['Password'] == password:
-                        valid_user = True
-                        st.session_state['logged_in'] = True
-                        st.session_state['username'] = username
-                        st.success(f"Chào mừng {username}!")
-                        st.experimental_rerun()
-                        break
-                if not valid_user:
-                    st.error("Tên đăng nhập hoặc mật khẩu không đúng.")
-            except gspread.exceptions.SpreadsheetNotFound:
-                st.error(f"Không tìm thấy Google Sheet xác thực: {SPREADSHEET_AUTH_NAME}")
-            except Exception as e:
-                st.error(f"Lỗi khi kiểm tra đăng nhập: {e}")
+# Đăng nhập
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if not st.session_state.authenticated:
+    st.subheader("🔐 Đăng nhập")
+    username = st.text_input("👤 Tên đăng nhập")
+    password = st.text_input("🔑 Mật khẩu", type="password")
+    if st.button("🔓 Đăng nhập"):
+        if username in users and users[username] == password:
+            st.session_state.authenticated = True
+            st.session_state.username = username
+            st.success("✅ Đăng nhập thành công!")
+        else:
+            st.error("❌ Sai tên đăng nhập hoặc mật khẩu.")
+    st.stop()
 
-    if forgot_password_button:
-        if gc:
-            try:
-                sh = gc.open(SPREADSHEET_AUTH_NAME)
-                worksheet = sh.worksheet(WORKSHEET_AUTH_NAME)
-                users = worksheet.get_all_records()
-                user_found = False
-                for user_record in users:
-                    if user_record['USE'] == username:
-                        send_reset_email("phamlong666@gmail.com", username, user_record['Password'])
-                        user_found = True
-                        break
-                if not user_found:
-                    st.warning("Không tìm thấy tên đăng nhập này.")
-            except gspread.exceptions.SpreadsheetNotFound:
-                st.error(f"Không tìm thấy Google Sheet xác thực: {SPREADSHEET_AUTH_NAME}")
-            except Exception as e:
-                st.error(f"Lỗi khi xử lý quên mật khẩu: {e}")
-        
-    st.info("Để sử dụng tính năng này, bạn cần tạo một Google Sheet tên là 'UserAuth' với hai cột 'USE' và 'Password'.")
+# Khởi tạo session lưu dữ liệu
+if "records" not in st.session_state:
+    st.session_state.records = []
 
-# Màn hình chính sau khi đăng nhập
-else:
-    # Hiển thị thông tin người dùng và nút đăng xuất
-    st.sidebar.markdown(f"**Chào mừng, {st.session_state['username']}!**")
-    if st.sidebar.button("Đăng xuất"):
-        st.session_state['logged_in'] = False
-        st.session_state['username'] = None
-        st.experimental_rerun()
+# Form nhập liệu
+with st.form("form_input", clear_on_submit=True):
+    col1, col2 = st.columns(2)
+    with col1:
+        ten_tuyen = st.text_input("🔌 Tên ĐZ / TBA", placeholder="VD: 473-E6.22 hoặc TBA Bản Áng")
+        nguoi_thuchien = st.text_input("👷‍♂️ Người thực hiện", value=st.session_state.username)
+        vitri = st.text_input("📍 Vị trí (tọa độ GPS hoặc địa chỉ)", placeholder="VD: 21.7621, 105.6083 hoặc Xóm Bản Áng")
+    with col2:
+        ngay = st.date_input("📅 Ngày thực hiện", value=datetime.now())
+        gio = st.time_input("⏰ Giờ thực hiện", value=datetime.now().time())
+        ghichu = st.text_area("✏️ Ghi chú", height=100)
 
-    # --- Form nhập liệu ---
-    with st.form("field_form", clear_on_submit=True):
-        st.markdown("### 📝 Nhập thông tin")
-        col1, col2 = st.columns(2)
-        with col1:
-            ten_tuyen = st.text_input("🔌 Tên tuyến / TBA")
-            nguoi_thuchien = st.text_input("👷 Người thực hiện", value=st.session_state['username'])
-        with col2:
-            thoigian = st.date_input("🗓️ Thời gian ghi nhận", value=datetime.now())
-            loaicv = st.selectbox("🔧 Loại công việc", ["Kiểm tra", "Sửa chữa", "Ghi chỉ số", "Khác"])
+    media_files = st.file_uploader("📷 Tải ảnh hoặc video hiện trường", type=["jpg", "jpeg", "png", "mp4"], accept_multiple_files=True)
+    submit = st.form_submit_button("✅ Ghi nhận thông tin")
 
-        ghichu = st.text_area("📝 Ghi chú hiện trường", height=80)
-        hinhanh_files = st.file_uploader("📷 Tải ảnh hiện trường", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+    if submit:
+        saved_files = []
+        for file in media_files:
+            save_path = os.path.join(UPLOAD_DIR, file.name)
+            with open(save_path, "wb") as f:
+                f.write(file.read())
+            saved_files.append(save_path)
 
-        submitted = st.form_submit_button("✅ Ghi nhận thông tin")
+        thoigian_full = datetime.combine(ngay, gio)
+        record = {
+            "Tên ĐZ / TBA": ten_tuyen,
+            "Người thực hiện": nguoi_thuchien,
+            "Vị trí": vitri,
+            "Thời gian": thoigian_full.strftime("%d/%m/%Y %H:%M"),
+            "Ghi chú": ghichu,
+            "Tệp phương tiện": saved_files
+        }
 
-        if submitted:
-            if not ten_tuyen or not nguoi_thuchien:
-                st.warning("⚠️ Vui lòng nhập đầy đủ Tên tuyến và Người thực hiện.")
-            else:
-                # Tải ảnh lên Google Drive và lấy link
-                image_links = []
-                if drive and hinhanh_files:
-                    for file in hinhanh_files:
-                        link = upload_image_to_drive(drive, file)
-                        if link:
-                            image_links.append(link)
+        st.session_state.records.append(record)
 
-                # Tạo bản ghi
-                record = {
-                    "Tên tuyến/TBA": ten_tuyen,
-                    "Người thực hiện": nguoi_thuchien,
-                    "Thời gian": thoigian.strftime("%d/%m/%Y"),
-                    "Loại công việc": loaicv,
-                    "Ghi chú": ghichu,
-                    "Ảnh": ", ".join(image_links) if image_links else ""
-                }
+        # Lưu tạm vào Excel
+        df = pd.DataFrame([{
+            "Tên ĐZ / TBA": r["Tên ĐZ / TBA"],
+            "Người thực hiện": r["Người thực hiện"],
+            "Vị trí": r["Vị trí"],
+            "Thời gian": r["Thời gian"],
+            "Ghi chú": r["Ghi chú"]
+        } for r in st.session_state.records])
+        df.to_excel("du_lieu_hien_truong.xlsx", index=False)
 
-                # Thêm bản ghi vào session state
-                st.session_state["data"].append(record)
-                st.success("✅ Đã ghi nhận thông tin hiện trường!")
+        st.success("✅ Đã ghi nhận và lưu dữ liệu vào file Excel.")
 
-                # Lưu bản ghi vào Google Sheets
-                if gc:
-                    try:
-                        sh = gc.open(SPREADSHEET_NAME)
-                        worksheet = sh.worksheet(WORKSHEET_NAME)
-                        worksheet.append_row(list(record.values()))
-                        st.success("✅ Đã lưu dữ liệu vào Google Sheets!")
-                    except gspread.exceptions.SpreadsheetNotFound:
-                        st.error(f"Không tìm thấy Google Sheet có tên: {SPREADSHEET_NAME}")
-                    except Exception as e:
-                        st.error(f"Lỗi khi lưu vào Google Sheets: {e}")
+# Hiển thị dữ liệu đã nhập
+if st.session_state.records:
+    st.markdown("### 📊 Danh sách thông tin đã ghi nhận:")
+    df = pd.DataFrame([{
+        "Tên ĐZ / TBA": r["Tên ĐZ / TBA"],
+        "Người thực hiện": r["Người thực hiện"],
+        "Vị trí": r["Vị trí"],
+        "Thời gian": r["Thời gian"],
+        "Ghi chú": r["Ghi chú"]
+    } for r in st.session_state.records])
+    st.dataframe(df, use_container_width=True)
 
-    # --- Hiển thị dữ liệu đã nhập ---
-    if st.session_state["data"]:
-        st.markdown("### 📊 Danh sách thông tin đã ghi:")
-        df = pd.DataFrame(st.session_state["data"])
-        st.dataframe(df, use_container_width=True)
+    st.markdown("### 📸 Phương tiện đính kèm:")
+    for i, r in enumerate(st.session_state.records):
+        if r["Tệp phương tiện"]:
+            st.markdown(f"**📝 Bản ghi {i+1}: {r['Tên ĐZ / TBA']}**")
+            for file in r["Tệp phương tiện"]:
+                if file.lower().endswith((".jpg", ".jpeg", ".png")):
+                    st.image(file, width=300)
+                elif file.lower().endswith(".mp4"):
+                    st.video(file)
