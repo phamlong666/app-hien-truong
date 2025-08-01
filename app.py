@@ -2,72 +2,74 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from PIL import Image
-import os
+import folium
+from streamlit_folium import st_folium
 
-st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
-st.title("📋 Ứng dụng thu thập hiện trường")
+st.set_page_config(page_title="Thu thập hiện trường", layout="wide")
 
-# Dữ liệu tạm thời
+# Dữ liệu tạm
 if "data" not in st.session_state:
     st.session_state.data = []
 
-# Danh sách tài khoản mẫu
-user_db = {
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+# Tài khoản mẫu
+users = {
     "use.nguyenvana": {"password": "123456", "role": "Công nhân"},
     "use.tranthib": {"password": "123456", "role": "Công nhân"},
     "npc\\longph": {"password": "admin123", "role": "Quản trị viên"}
 }
 
 # Đăng nhập
-with st.expander("🔐 Đăng nhập"):
-    username = st.text_input("USE", placeholder="Nhập mã USE")
-    password = st.text_input("Mật khẩu", type="password")
-    login = st.button("Đăng nhập")
+if not st.session_state.logged_in:
+    with st.form("login_form"):
+        st.subheader("🔐 Đăng nhập hệ thống")
+        user = st.text_input("Mã USE")
+        pwd = st.text_input("Mật khẩu", type="password")
+        submit = st.form_submit_button("Đăng nhập")
+        if submit:
+            if user in users and users[user]["password"] == pwd:
+                st.session_state.logged_in = True
+                st.session_state.username = user
+                st.session_state.role = users[user]["role"]
+                st.success(f"Đăng nhập thành công: {user}")
+            else:
+                st.error("Sai mã USE hoặc mật khẩu.")
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if login:
-    user = user_db.get(username)
-    if user and user["password"] == password:
-        st.session_state.logged_in = True
-        st.session_state.username = username
-        st.session_state.role = user["role"]
-        st.success(f"Đăng nhập thành công: {username}")
-    else:
-        st.error("Sai USE hoặc mật khẩu.")
-
-# Giao diện chính khi đăng nhập
+# Giao diện chính
 if st.session_state.logged_in:
-    st.subheader("📍 Nhập dữ liệu hiện trường")
+    st.title("📋 Ghi nhận hiện trường")
     with st.form("form_hientruong"):
-        vi_tri = st.text_input("Tên vị trí (VD: Cột 1.1 / TBA ABC)")
-        loai_cv = st.selectbox("Loại công việc", ["Kiểm tra", "Sửa chữa", "Vệ sinh", "Khác"])
-        mo_ta = st.text_area("Mô tả hiện trường")
-        lat = st.text_input("Vĩ độ (Latitude)")
-        lon = st.text_input("Kinh độ (Longitude)")
-        hinh_anh = st.file_uploader("📷 Chọn ảnh hiện trường", type=["jpg", "jpeg", "png"])
-        submitted = st.form_submit_button("📤 Gửi dữ liệu")
+        vi_tri = st.text_input("📍 Tên vị trí (VD: Cột 1.1)")
+        loai = st.selectbox("🔧 Loại công việc", ["Kiểm tra", "Sửa chữa", "Vệ sinh", "Khác"])
+        mo_ta = st.text_area("📝 Mô tả hiện trường")
+        lat = st.text_input("🌐 Vĩ độ (Latitude)")
+        lon = st.text_input("🌐 Kinh độ (Longitude)")
+        anh = st.file_uploader("📷 Chọn ảnh hiện trường", type=["jpg", "jpeg", "png"])
+        gui = st.form_submit_button("📤 Gửi dữ liệu")
 
-        if submitted:
+        if gui and vi_tri and lat and lon:
             now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            record = {
+            ten_anh = anh.name if anh else ""
+            st.session_state.data.append({
                 "USE": st.session_state.username,
                 "Thời gian": now,
                 "Vị trí": vi_tri,
-                "Loại công việc": loai_cv,
+                "Công việc": loai,
                 "Mô tả": mo_ta,
-                "Vĩ độ": lat,
-                "Kinh độ": lon,
-                "Tên file ảnh": hinh_anh.name if hinh_anh else ""
-            }
-            st.session_state.data.append(record)
-            st.success("✅ Đã ghi dữ liệu (chưa kết nối Google Sheet)")
-            if hinh_anh:
-                img = Image.open(hinh_anh)
-                st.image(img, caption="Ảnh hiện trường", use_column_width=True)
+                "Lat": lat,
+                "Lon": lon,
+                "Ảnh": ten_anh
+            })
+            st.success("✅ Đã ghi dữ liệu.")
+            if anh:
+                img = Image.open(anh)
+                st.image(img, caption="Ảnh hiện trường", use_container_width=True)
 
-    st.divider()
-    st.subheader("📑 Dữ liệu hiện trường đã nhập")
-    df = pd.DataFrame(st.session_state.data)
-    st.dataframe(df, use_container_width=True)
+            # Hiển thị bản đồ ngay
+            m = folium.Map(location=[float(lat), float(lon)], zoom_start=17)
+            folium.Marker([float(lat), float(lon)],
+                          tooltip=vi_tri,
+                          popup=mo_ta).add_to(m)
+            st_folium(m, height=400, width=700)
