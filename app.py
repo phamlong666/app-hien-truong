@@ -1,78 +1,52 @@
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from PIL import Image
-import folium
-from streamlit_folium import st_folium
 
-st.set_page_config(page_title="Thu thập hiện trường", layout="wide")
+st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 
-# Danh sách tài khoản mẫu
-users = {
-    "use.nguyenvana": {"password": "123456", "role": "Công nhân"},
-    "use.tranthib": {"password": "123456", "role": "Công nhân"},
-    "npc\\longph": {"password": "admin123", "role": "Quản trị viên"}
-}
+st.title("📋 Ứng dụng thu thập thông tin hiện trường")
+st.markdown("**Phiên bản mẫu – Mắt Nâu hỗ trợ Đội quản lý Điện lực khu vực Định Hóa**")
 
-# Dữ liệu tạm
+# --- Khởi tạo session
 if "data" not in st.session_state:
-    st.session_state.data = []
+    st.session_state["data"] = []
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+with st.form("field_form", clear_on_submit=True):
+    col1, col2 = st.columns(2)
+    with col1:
+        ten_tuyen = st.text_input("🔌 Tên tuyến / TBA")
+        nguoi_thuchien = st.text_input("👷 Người thực hiện")
+    with col2:
+        thoigian = st.date_input("🗓️ Thời gian ghi nhận", value=datetime.now())
+        loaicv = st.selectbox("🔧 Loại công việc", ["Kiểm tra", "Sửa chữa", "Ghi chỉ số", "Khác"])
 
-if not st.session_state.logged_in:
-    st.title("🔐 Đăng nhập hệ thống")
-    with st.form("login_form"):
-        user = st.text_input("Mã USE")
-        pwd = st.text_input("Mật khẩu", type="password")
-        submit = st.form_submit_button("Đăng nhập")
-        if submit:
-            if user in users and users[user]["password"] == pwd:
-                st.session_state.logged_in = True
-                st.session_state.username = user
-                st.session_state.role = users[user]["role"]
-                st.experimental_rerun()
-            else:
-                st.error("Sai mã USE hoặc mật khẩu.")
-    st.stop()
+    ghichu = st.text_area("📝 Ghi chú hiện trường", height=80)
+    hinhanh = st.file_uploader("📷 Tải ảnh hiện trường", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-# Giao diện chính sau đăng nhập
-st.title("📋 Ghi nhận hiện trường")
-with st.form("form_hientruong"):
-    vi_tri = st.text_input("📍 Tên vị trí (VD: Cột 1.1)")
-    loai = st.selectbox("🔧 Loại công việc", ["Kiểm tra", "Sửa chữa", "Vệ sinh", "Khác"])
-    mo_ta = st.text_area("📝 Mô tả hiện trường")
-    lat = st.text_input("🌐 Vĩ độ (Latitude)")
-    lon = st.text_input("🌐 Kinh độ (Longitude)")
-    anh = st.file_uploader("📷 Chọn ảnh hiện trường", type=["jpg", "jpeg", "png"])
-    gui = st.form_submit_button("📤 Gửi dữ liệu")
+    submitted = st.form_submit_button("✅ Ghi nhận thông tin")
 
-if gui and vi_tri and lat and lon:
-    now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    ten_anh = anh.name if anh else ""
-    st.session_state.data.append({
-        "USE": st.session_state.username,
-        "Thời gian": now,
-        "Vị trí": vi_tri,
-        "Công việc": loai,
-        "Mô tả": mo_ta,
-        "Lat": lat,
-        "Lon": lon,
-        "Ảnh": ten_anh
-    })
-    st.success("✅ Đã ghi dữ liệu.")
+    if submitted:
+        record = {
+            "Tên tuyến/TBA": ten_tuyen,
+            "Người thực hiện": nguoi_thuchien,
+            "Thời gian": thoigian.strftime("%d/%m/%Y"),
+            "Loại công việc": loaicv,
+            "Ghi chú": ghichu,
+            "Ảnh": [img.name for img in hinhanh] if hinhanh else []
+        }
+        st.session_state["data"].append(record)
+        st.success("✅ Đã ghi nhận thông tin hiện trường!")
 
-    if anh:
-        img = Image.open(anh)
-        st.image(img, caption="Ảnh hiện trường", use_container_width=True)
+# --- Hiển thị dữ liệu đã nhập
+if st.session_state["data"]:
+    st.markdown("### 📊 Danh sách thông tin đã ghi:")
+    df = pd.DataFrame(st.session_state["data"]).drop(columns=["Ảnh"])
+    st.dataframe(df, use_container_width=True)
 
-    try:
-        m = folium.Map(location=[float(lat), float(lon)], zoom_start=17)
-        folium.Marker([float(lat), float(lon)],
-                      tooltip=vi_tri,
-                      popup=mo_ta).add_to(m)
-        st.subheader("🗺️ Vị trí hiện trường trên bản đồ:")
-        st_folium(m, height=400, width=700)
-    except:
-        st.warning("Không thể vẽ bản đồ – tọa độ không hợp lệ.")
+    st.markdown("📸 **Ảnh đính kèm (nếu có):**")
+    for i, record in enumerate(st.session_state["data"]):
+        if record["Ảnh"]:
+            st.markdown(f"**🔹 Bản ghi {i+1} – {record['Tên tuyến/TBA']}**")
+            for name in record["Ảnh"]:
+                st.write(f"📁 {name}")
