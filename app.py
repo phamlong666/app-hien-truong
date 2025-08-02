@@ -10,7 +10,7 @@ import os
 # Cấu hình Google Sheets và Google Drive
 # Vui lòng thay thế 'your_service_account_key.json' bằng tên file key của bạn.
 # Bạn cần tạo file này từ Google Cloud Console và chia sẻ quyền truy cập Google Sheet cho email của service account đó.
-GDRIVE_CLIENT_SECRET = 'your_service_account_key.json'
+GDRIVE_CLIENT_SECRET = 'sotaygpt-fba5e9b3e6fd.json'
 SPREADSHEET_NAME = 'FieldDataCollection'
 WORKSHEET_NAME = 'Sheet1'
 SPREADSHEET_AUTH_NAME = 'UserAuth'
@@ -152,7 +152,7 @@ else:
         st.markdown("### 📝 Nhập thông tin")
         col1, col2 = st.columns(2)
         with col1:
-            ten_tuyen = st.text_input("🔌 Tên tuyến / TBA")
+            ten_tuyen = st.text_input("  Tên tuyến / TBA")
             nguoi_thuchien = st.text_input("👷 Người thực hiện", value=st.session_state['username'])
         with col2:
             thoigian = st.date_input("🗓️ Thời gian ghi nhận", value=datetime.now())
@@ -206,3 +206,4 @@ else:
         st.markdown("### 📊 Danh sách thông tin đã ghi:")
         df = pd.DataFrame(st.session_state["data"])
         st.dataframe(df, use_container_width=True)
+ 
