@@ -11,12 +11,6 @@ import os
 # --- Cấu hình trang ---
 st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 
-# --- Bổ sung để gỡ lỗi đường dẫn file ---
-st.header("Thông tin gỡ lỗi")
-st.write(f"Đường dẫn thư mục hiện tại: {os.getcwd()}")
-st.write(f"Các file trong thư mục hiện tại: {os.listdir()}")
-st.markdown("---")
-
 # Cấu hình Google Sheets và Google Drive (dùng file JSON riêng thay vì secrets.toml)
 SERVICE_ACCOUNT_FILE = "service_account.json"
 
@@ -50,7 +44,11 @@ def get_all_clients():
 
         return gspread_client, drive_client
     except Exception as e:
-        st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra file JSON và quyền truy cập.\n\nChi tiết: {e}")
+        # Kiểm tra lỗi đặc biệt liên quan đến file service account
+        if "invalid_grant" in str(e):
+            st.error(f"Lỗi xác thực: 'invalid_grant'. Có vẻ file `{SERVICE_ACCOUNT_FILE}` của bạn không hợp lệ hoặc đã hết hạn. Vui lòng tải xuống file xác thực mới từ Google Cloud và tải lên lại.")
+        else:
+            st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra file JSON và quyền truy cập.\n\nChi tiết: {e}")
         return None, None
 
 def upload_image_to_drive(drive_client, file_obj):
@@ -82,7 +80,7 @@ if 'data' not in st.session_state:
     st.session_state['data'] = []
 
 if not st.session_state['logged_in']:
-    st.markdown("### 🔑 Đăng nhập")
+    st.markdown("###   Đăng nhập")
     with st.form("login_form"):
         username = st.text_input("👤 USE", placeholder="Nhập tên đăng nhập")
         password = st.text_input("🔒 Mật khẩu", type="password", placeholder="Nhập mật khẩu")
@@ -189,3 +187,4 @@ else:
         st.markdown("### 📊 Danh sách thông tin đã ghi:")
         df = pd.DataFrame(st.session_state["data"])
         st.dataframe(df, use_container_width=True)
+ 
