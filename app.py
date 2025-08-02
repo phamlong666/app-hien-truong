@@ -14,7 +14,8 @@ st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 # Cấu hình Google Sheets và Google Drive
 # Lấy key từ Streamlit secrets
 try:
-    GDRIVE_CLIENT_SECRET = st.secrets["gdrive_service_account"]
+    import json
+GDRIVE_CLIENT_SECRET = json.loads(st.secrets["gdrive_service_account"])
 except KeyError:
     st.error("Lỗi: Không tìm thấy key 'gdrive_service_account' trong Streamlit secrets. "
              "Vui lòng cấu hình secrets theo hướng dẫn.")
