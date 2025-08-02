@@ -6,3 +6,4 @@ pydrive2
 Pillow
 folium
 streamlit_folium
+python-dotenv
