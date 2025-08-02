@@ -11,6 +11,12 @@ import os
 # --- Cấu hình trang ---
 st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 
+# --- Bổ sung để gỡ lỗi đường dẫn file ---
+st.header("Thông tin gỡ lỗi")
+st.write(f"Đường dẫn thư mục hiện tại: {os.getcwd()}")
+st.write(f"Các file trong thư mục hiện tại: {os.listdir()}")
+st.markdown("---")
+
 # Cấu hình Google Sheets và Google Drive (dùng file JSON riêng thay vì secrets.toml)
 SERVICE_ACCOUNT_FILE = "service_account.json"
 
