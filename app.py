@@ -19,33 +19,26 @@ WORKSHEET_AUTH_NAME = 'Sheet1'
 SENDER_EMAIL = 'your_email@gmail.com' # Thay bằng email của bạn
 SENDER_PASSWORD = 'your_password' # Thay bằng mật khẩu ứng dụng của bạn
 
-# Hàm để xác thực và kết nối đến Google Sheets
+# Hàm để xác thực và kết nối đến cả Google Sheets và Google Drive
 @st.cache_resource
-def get_gspread_client():
+def get_all_clients():
     try:
         # Sử dụng service account để xác thực
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         creds = ServiceAccountCredentials.from_json_keyfile_name(GDRIVE_CLIENT_SECRET, scope)
-        client = gspread.authorize(creds)
-        return client
-    except Exception as e:
-        st.error(f"Lỗi kết nối Google Sheets: {e}")
-        return None
-
-# Hàm để kết nối đến Google Drive (để tải ảnh lên)
-@st.cache_resource
-def get_drive_client():
-    try:
+        
+        # Kết nối đến Google Sheets
+        gspread_client = gspread.authorize(creds)
+        
+        # Kết nối đến Google Drive
         gauth = GoogleAuth()
-        # Xác thực với service account
-        gauth.LoadCredentialsFile(GDRIVE_CLIENT_SECRET)
-        if gauth.access_token_expired:
-            gauth.Refresh()
-        drive = GoogleDrive(gauth)
-        return drive
+        gauth.credentials = creds
+        drive_client = GoogleDrive(gauth)
+        
+        return gspread_client, drive_client
     except Exception as e:
-        st.error(f"Lỗi kết nối Google Drive: {e}")
-        return None
+        st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra file '{GDRIVE_CLIENT_SECRET}' và quyền truy cập. Lỗi chi tiết: {e}")
+        return None, None
 
 # Hàm để tải ảnh lên Google Drive và trả về link
 def upload_image_to_drive(drive_client, file_obj):
@@ -54,6 +47,7 @@ def upload_image_to_drive(drive_client, file_obj):
     try:
         # Tạo file trên Google Drive
         gfile = drive_client.CreateFile({'title': file_obj.name})
+        gfile.SetContentFile(file_obj)
         gfile.Upload()
         # Trả về link để xem hoặc chia sẻ
         return gfile['alternateLink']
@@ -67,17 +61,20 @@ def send_reset_email(to_email, username, password):
     st.info(f"Mật khẩu của bạn là: {password}. Email đã được gửi đến {to_email}")
 
 # Khởi tạo client
-gc = get_gspread_client()
-drive = get_drive_client()
+gc, drive = get_all_clients()
 
 # --- Cấu hình trang ---
 st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
-st.title("  Ứng dụng thu thập thông tin hiện trường")
+st.title("📋 Ứng dụng thu thập thông tin hiện trường")
 st.markdown("**Phiên bản mẫu – Mắt Nâu hỗ trợ Đội quản lý Điện lực khu vực Định Hóa**")
 
 # Khởi tạo session state cho trạng thái đăng nhập
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
+
+# Khởi tạo session state cho dữ liệu
+if "data" not in st.session_state:
+    st.session_state["data"] = []
 
 # Màn hình đăng nhập
 if not st.session_state['logged_in']:
@@ -203,4 +200,3 @@ else:
         st.markdown("### 📊 Danh sách thông tin đã ghi:")
         df = pd.DataFrame(st.session_state["data"])
         st.dataframe(df, use_container_width=True)
- 
