@@ -5,6 +5,7 @@ import gspread
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 import json
+import os
 
 # --- Cấu hình trang ---
 # Lệnh st.set_page_config() phải là lệnh Streamlit đầu tiên trong script
@@ -53,13 +54,18 @@ def upload_image_to_drive(drive_client, file_obj):
     if not drive_client:
         return None
     try:
+        # Tạo file tạm thời để pydrive có thể đọc
+        with open(file_obj.name, "wb") as f:
+            f.write(file_obj.getbuffer())
+
         # Tạo file trên Google Drive
         gfile = drive_client.CreateFile({'title': file_obj.name})
-        # SetContentFile không hoạt động với streamlit file_uploader object, cần dùng SetContentString
-        # hoặc đọc file obj thành chuỗi byte trước. SetContentString là cách đơn giản hơn.
-        # file_obj.read() sẽ đọc toàn bộ nội dung file và SetContentString sẽ chấp nhận nó.
-        gfile.SetContentString(file_obj.read()) 
+        gfile.SetContentFile(file_obj.name)
         gfile.Upload()
+
+        # Xóa file tạm thời sau khi upload
+        os.remove(file_obj.name)
+
         # Trả về link để xem hoặc chia sẻ
         return gfile['alternateLink']
     except Exception as e:
