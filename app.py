@@ -14,7 +14,10 @@ st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 # Cấu hình Google Sheets và Google Drive
 try:
     raw_secret = st.secrets["gdrive_service_account"]
-    GDRIVE_CLIENT_SECRET = json.loads(raw_secret)
+    if isinstance(raw_secret, str):
+        GDRIVE_CLIENT_SECRET = json.loads(raw_secret)
+    else:
+        GDRIVE_CLIENT_SECRET = dict(raw_secret)
 except json.JSONDecodeError as e:
     st.error(f"Lỗi giải mã JSON từ secrets: {e}")
     st.stop()
