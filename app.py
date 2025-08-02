@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import gspread
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
+from oauth2client.service_account import ServiceAccountCredentials
 import json
 import os
 
@@ -35,9 +36,14 @@ def get_all_clients():
     try:
         creds_dict = dict(GDRIVE_CLIENT_SECRET)
         gspread_client = gspread.service_account_from_dict(creds_dict)
+
+        scope = ["https://www.googleapis.com/auth/drive"]
+        credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+
         gauth = GoogleAuth()
-        gauth.AuthFromDict(creds_dict)
+        gauth.credentials = credentials
         drive_client = GoogleDrive(gauth)
+
         return gspread_client, drive_client
     except Exception as e:
         st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra secret và quyền truy cập. Lỗi chi tiết: {e}")
@@ -59,22 +65,22 @@ def upload_image_to_drive(drive_client, file_obj):
         st.error(f"Lỗi tải ảnh lên Google Drive: {e}")
         return None
 
-# Hàm để gửi email (giả lập)
+# Hàm gửi email (giả lập)
 def send_reset_email(to_email, username, password):
     st.info(f"Mật khẩu của bạn là: {password}. Email đã được gửi đến {to_email}")
 
-# Khởi tạo client
+# Khởi tạo kết nối
 gc, drive = get_all_clients()
 
-# --- Giao diện chính ---
+# --- Giao diện người dùng ---
 st.title("📋 Ứng dụng thu thập thông tin hiện trường")
 st.markdown("**Phiên bản mẫu – Mắt Nâu hỗ trợ Đội quản lý Điện lực khu vực Định Hóa**")
 
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
-if "data" not in st.session_state:
-    st.session_state["data"] = []
+if 'data' not in st.session_state:
+    st.session_state['data'] = []
 
 if not st.session_state['logged_in']:
     st.markdown("### 🔑 Đăng nhập")
@@ -96,16 +102,14 @@ if not st.session_state['logged_in']:
                 valid_user = False
                 for user_record in users:
                     if user_record['USE'] == username and user_record['Password'] == password:
-                        valid_user = True
                         st.session_state['logged_in'] = True
                         st.session_state['username'] = username
+                        valid_user = True
                         st.success(f"Chào mừng {username}!")
                         st.experimental_rerun()
                         break
                 if not valid_user:
                     st.error("Tên đăng nhập hoặc mật khẩu không đúng.")
-            except gspread.exceptions.SpreadsheetNotFound:
-                st.error(f"Không tìm thấy Google Sheet xác thực: {SPREADSHEET_AUTH_NAME}")
             except Exception as e:
                 st.error(f"Lỗi khi kiểm tra đăng nhập: {e}")
 
@@ -123,12 +127,10 @@ if not st.session_state['logged_in']:
                         break
                 if not user_found:
                     st.warning("Không tìm thấy tên đăng nhập này.")
-            except gspread.exceptions.SpreadsheetNotFound:
-                st.error(f"Không tìm thấy Google Sheet xác thực: {SPREADSHEET_AUTH_NAME}")
             except Exception as e:
                 st.error(f"Lỗi khi xử lý quên mật khẩu: {e}")
 
-    st.info("Để sử dụng tính năng này, bạn cần tạo một Google Sheet tên là 'UserAuth' với hai cột 'USE' và 'Password'.")
+    st.info("Bạn cần có tài khoản để sử dụng ứng dụng. Sheet `UserAuth` cần có cột 'USE' và 'Password'.")
 
 else:
     st.sidebar.markdown(f"**Chào mừng, {st.session_state['username']}!**")
@@ -138,7 +140,7 @@ else:
         st.experimental_rerun()
 
     with st.form("field_form", clear_on_submit=True):
-        st.markdown("### 📝 Nhập thông tin")
+        st.markdown("### 📝 Nhập thông tin hiện trường")
         col1, col2 = st.columns(2)
         with col1:
             ten_tuyen = st.text_input("🔌 Tên tuyến / TBA")
@@ -181,8 +183,6 @@ else:
                         worksheet = sh.worksheet(WORKSHEET_NAME)
                         worksheet.append_row(list(record.values()))
                         st.success("✅ Đã lưu dữ liệu vào Google Sheets!")
-                    except gspread.exceptions.SpreadsheetNotFound:
-                        st.error(f"Không tìm thấy Google Sheet có tên: {SPREADSHEET_NAME}")
                     except Exception as e:
                         st.error(f"Lỗi khi lưu vào Google Sheets: {e}")
 
