@@ -11,26 +11,21 @@ import os
 # --- Cấu hình trang ---
 st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 
-# Cấu hình Google Sheets và Google Drive
-try:
-    raw_secret = st.secrets["gdrive_service_account"]
-    if isinstance(raw_secret, str):
-        GDRIVE_CLIENT_SECRET = json.loads(raw_secret)
-    else:
-        GDRIVE_CLIENT_SECRET = dict(raw_secret)
-except json.JSONDecodeError as e:
-    st.error(f"Lỗi giải mã JSON từ secrets: {e}")
-    st.stop()
-except KeyError:
-    st.error("Lỗi: Không tìm thấy key 'gdrive_service_account' trong Streamlit secrets.")
+# Cấu hình Google Sheets và Google Drive (dùng file JSON riêng thay vì secrets.toml)
+SERVICE_ACCOUNT_FILE = "service_account.json"
+
+if not os.path.exists(SERVICE_ACCOUNT_FILE):
+    st.error(f"Không tìm thấy file {SERVICE_ACCOUNT_FILE}. Hãy chắc chắn bạn đã tải lên đúng file.")
     st.stop()
 
-SPREADSHEET_NAME = 'FieldDataCollection'
-WORKSHEET_NAME = 'Sheet1'
-SPREADSHEET_AUTH_NAME = 'UserAuth'
-WORKSHEET_AUTH_NAME = 'UserAuth'  # Đã sửa đúng tên sheet chứa thông tin tài khoản
+with open(SERVICE_ACCOUNT_FILE) as f:
+    GDRIVE_CLIENT_SECRET = json.load(f)
 
-# Cấu hình email
+SPREADSHEET_NAME = 'USE'
+WORKSHEET_NAME = 'FieldDataCollection'
+SPREADSHEET_AUTH_NAME = 'USE'
+WORKSHEET_AUTH_NAME = 'UserAuth'
+
 SENDER_EMAIL = 'your_email@gmail.com'
 SENDER_PASSWORD = 'your_password'
 
@@ -38,10 +33,10 @@ SENDER_PASSWORD = 'your_password'
 def get_all_clients():
     try:
         creds_dict = dict(GDRIVE_CLIENT_SECRET)
-        gspread_client = gspread.service_account_from_dict(creds_dict)
+        gspread_client = gspread.service_account(filename=SERVICE_ACCOUNT_FILE)
 
         scope = ["https://www.googleapis.com/auth/drive"]
-        credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(SERVICE_ACCOUNT_FILE, scope)
 
         gauth = GoogleAuth()
         gauth.credentials = credentials
@@ -49,10 +44,9 @@ def get_all_clients():
 
         return gspread_client, drive_client
     except Exception as e:
-        st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra secret và quyền truy cập. Lỗi chi tiết: {e}")
+        st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra file JSON và quyền truy cập.\n\nChi tiết: {e}")
         return None, None
 
-# Hàm để tải ảnh lên Google Drive và trả về link
 def upload_image_to_drive(drive_client, file_obj):
     if not drive_client:
         return None
@@ -68,20 +62,16 @@ def upload_image_to_drive(drive_client, file_obj):
         st.error(f"Lỗi tải ảnh lên Google Drive: {e}")
         return None
 
-# Hàm gửi email (giả lập)
 def send_reset_email(to_email, username, password):
     st.info(f"Mật khẩu của bạn là: {password}. Email đã được gửi đến {to_email}")
 
-# Khởi tạo kết nối
 gc, drive = get_all_clients()
 
-# --- Giao diện người dùng ---
 st.title("📋 Ứng dụng thu thập thông tin hiện trường")
 st.markdown("**Phiên bản mẫu – Mắt Nâu hỗ trợ Đội quản lý Điện lực khu vực Định Hóa**")
 
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
-
 if 'data' not in st.session_state:
     st.session_state['data'] = []
 
