@@ -28,7 +28,7 @@ except KeyError:
 SPREADSHEET_NAME = 'FieldDataCollection'
 WORKSHEET_NAME = 'Sheet1'
 SPREADSHEET_AUTH_NAME = 'UserAuth'
-WORKSHEET_AUTH_NAME = 'Sheet1'
+WORKSHEET_AUTH_NAME = 'UserAuth'  # Đã sửa đúng tên sheet chứa thông tin tài khoản
 
 # Cấu hình email
 SENDER_EMAIL = 'your_email@gmail.com'
