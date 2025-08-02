@@ -8,16 +8,17 @@ import json
 import os
 
 # --- Cấu hình trang ---
-# Lệnh st.set_page_config() phải là lệnh Streamlit đầu tiên trong script
 st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 
 # Cấu hình Google Sheets và Google Drive
-# Lấy key từ Streamlit secrets
 try:
-    GDRIVE_CLIENT_SECRET = json.loads(st.secrets["gdrive_service_account"])
+    raw_secret = st.secrets["gdrive_service_account"]
+    GDRIVE_CLIENT_SECRET = json.loads(raw_secret)
+except json.JSONDecodeError as e:
+    st.error(f"Lỗi giải mã JSON từ secrets: {e}")
+    st.stop()
 except KeyError:
-    st.error("Lỗi: Không tìm thấy key 'gdrive_service_account' trong Streamlit secrets. "
-             "Vui lòng cấu hình secrets theo hướng dẫn.")
+    st.error("Lỗi: Không tìm thấy key 'gdrive_service_account' trong Streamlit secrets.")
     st.stop()
 
 SPREADSHEET_NAME = 'FieldDataCollection'
@@ -26,10 +27,9 @@ SPREADSHEET_AUTH_NAME = 'UserAuth'
 WORKSHEET_AUTH_NAME = 'Sheet1'
 
 # Cấu hình email
-SENDER_EMAIL = 'your_email@gmail.com' # Thay bằng email của bạn
-SENDER_PASSWORD = 'your_password' # Thay bằng mật khẩu ứng dụng của bạn
+SENDER_EMAIL = 'your_email@gmail.com'
+SENDER_PASSWORD = 'your_password'
 
-# Hàm để xác thực và kết nối đến cả Google Sheets và Google Drive
 @st.cache_resource
 def get_all_clients():
     try:
