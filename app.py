@@ -5,16 +5,21 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
-import os
+import json
 
 # --- Cấu hình trang ---
 # Lệnh st.set_page_config() phải là lệnh Streamlit đầu tiên trong script
 st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 
 # Cấu hình Google Sheets và Google Drive
-# Vui lòng thay thế 'your_service_account_key.json' bằng tên file key của bạn.
-# Bạn cần tạo file này từ Google Cloud Console và chia sẻ quyền truy cập Google Sheet cho email của service account đó.
-GDRIVE_CLIENT_SECRET = 'sotaygpt-fba5e9b3e6fd.json'
+# Lấy key từ Streamlit secrets
+try:
+    GDRIVE_CLIENT_SECRET = st.secrets["gdrive_service_account"]
+except KeyError:
+    st.error("Lỗi: Không tìm thấy key 'gdrive_service_account' trong Streamlit secrets. "
+             "Vui lòng cấu hình secrets theo hướng dẫn.")
+    st.stop()
+
 SPREADSHEET_NAME = 'FieldDataCollection'
 WORKSHEET_NAME = 'Sheet1'
 SPREADSHEET_AUTH_NAME = 'UserAuth'
@@ -28,14 +33,11 @@ SENDER_PASSWORD = 'your_password' # Thay bằng mật khẩu ứng dụng của 
 @st.cache_resource
 def get_all_clients():
     try:
-        # Kiểm tra sự tồn tại của file key
-        if not os.path.exists(GDRIVE_CLIENT_SECRET):
-            st.error(f"Lỗi: Không tìm thấy file '{GDRIVE_CLIENT_SECRET}'. Vui lòng đảm bảo file này nằm trong cùng thư mục với app.py")
-            return None, None
-            
-        # Sử dụng service account để xác thực
+        # Sử dụng nội dung từ secret để xác thực
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_name(GDRIVE_CLIENT_SECRET, scope)
+        # Tạo tệp tin tạm thời từ secret
+        creds_dict = GDRIVE_CLIENT_SECRET
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         
         # Kết nối đến Google Sheets
         gspread_client = gspread.authorize(creds)
@@ -47,7 +49,7 @@ def get_all_clients():
         
         return gspread_client, drive_client
     except Exception as e:
-        st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra file '{GDRIVE_CLIENT_SECRET}' và quyền truy cập. Lỗi chi tiết: {e}")
+        st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra secret và quyền truy cập. Lỗi chi tiết: {e}")
         return None, None
 
 # Hàm để tải ảnh lên Google Drive và trả về link
@@ -162,7 +164,7 @@ else:
             loaicv = st.selectbox("🔧 Loại công việc", ["Kiểm tra", "Sửa chữa", "Ghi chỉ số", "Khác"])
 
         ghichu = st.text_area("📝 Ghi chú hiện trường", height=80)
-        hinhanh_files = st.file_uploader("📷 Tải ảnh hiện trường", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+        hinhanh_files = st.file_uploader("  Tải ảnh hiện trường", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
         submitted = st.form_submit_button("✅ Ghi nhận thông tin")
 
@@ -209,3 +211,4 @@ else:
         st.markdown("### 📊 Danh sách thông tin đã ghi:")
         df = pd.DataFrame(st.session_state["data"])
         st.dataframe(df, use_container_width=True)
+ 
