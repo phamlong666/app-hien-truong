@@ -13,49 +13,32 @@ import re
 st.set_page_config(page_title="Thu thập thông tin hiện trường", layout="centered")
 
 # --- Lấy thông tin xác thực từ Streamlit Secrets ---
-# Đây là cách được khuyến nghị để quản lý thông tin nhạy cảm
 try:
     gdrive_secrets_read_only = st.secrets["gdrive_service_account"]
-    
-    # Tạo một bản sao có thể chỉnh sửa của đối tượng secrets
     gdrive_secrets = dict(gdrive_secrets_read_only)
-    
-    # Đảm bảo chuỗi private_key có các ký tự xuống dòng thực tế
-    # Hàm này sẽ thay thế các ký tự '\n' trong chuỗi thành các ký tự xuống dòng thực tế
     gdrive_secrets["private_key"] = gdrive_secrets["private_key"].replace("\\n", "\n")
-
 except KeyError:
-    st.error("Lỗi: Không tìm thấy 'gdrive_service_account' trong Streamlit Secrets. "
-             "Vui lòng cấu hình các bí mật của bạn theo đúng định dạng TOML.")
+    st.error("Lỗi: Không tìm thấy 'gdrive_service_account' trong Streamlit Secrets.")
     st.stop()
 
-
+# --- Cấu hình Google Sheets ---
 SPREADSHEET_NAME = 'USE'
 WORKSHEET_NAME = 'FieldDataCollection'
-SPREADSHEET_AUTH_NAME = 'USE'
+SPREADSHEET_AUTH_ID = '1kjGU65kGc1j8SBvPBy4Mw82aBgTfybSy'
 WORKSHEET_AUTH_NAME = 'UserAuth'
-
-SENDER_EMAIL = 'your_email@gmail.com'
-SENDER_PASSWORD = 'your_password'
 
 @st.cache_resource
 def get_all_clients():
     try:
-        # Gspread client
-        # Sử dụng service_account_from_dict để đọc trực tiếp từ dict đã được xử lý
         gspread_client = gspread.service_account_from_dict(gdrive_secrets)
-
-        # PyDrive client
         scope = ["https://www.googleapis.com/auth/drive"]
         credentials = ServiceAccountCredentials.from_json_keyfile_dict(gdrive_secrets, scope)
-
         gauth = GoogleAuth()
         gauth.credentials = credentials
         drive_client = GoogleDrive(gauth)
-
         return gspread_client, drive_client
     except Exception as e:
-        st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra lại 'private_key' trong Secrets.\n\nChi tiết: {e}")
+        st.error(f"Lỗi kết nối Google API: {e}")
         return None, None
 
 def upload_image_to_drive(drive_client, file_obj):
@@ -66,13 +49,10 @@ def upload_image_to_drive(drive_client, file_obj):
         os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
         with open(temp_file_path, "wb") as f:
             f.write(file_obj.getbuffer())
-        
         gfile = drive_client.CreateFile({'title': file_obj.name})
         gfile.SetContentFile(temp_file_path)
         gfile.Upload()
-        
         os.remove(temp_file_path)
-        
         return gfile['alternateLink']
     except Exception as e:
         st.error(f"Lỗi tải ảnh lên Google Drive: {e}")
@@ -81,7 +61,7 @@ def upload_image_to_drive(drive_client, file_obj):
 def send_reset_email(to_email, username, password):
     st.info(f"Mật khẩu của bạn là: {password}. Email đã được gửi đến {to_email}")
 
-# Khởi tạo các client
+# --- Khởi tạo ---
 gc, drive = get_all_clients()
 
 st.title("📋 Ứng dụng thu thập thông tin hiện trường")
@@ -96,7 +76,7 @@ if not st.session_state['logged_in']:
     st.markdown("### 🔑 Đăng nhập")
     with st.form("login_form"):
         username = st.text_input("👤 USE", placeholder="Nhập tên đăng nhập")
-        password = st.text_input("🔒 Mật khẩu", type="password", placeholder="Nhập mật khẩu")
+        password = st.text_input("🔐 Mật khẩu", type="password", placeholder="Nhập mật khẩu")
         col1, col2 = st.columns(2)
         with col1:
             login_button = st.form_submit_button("✅ Đăng nhập")
@@ -106,41 +86,37 @@ if not st.session_state['logged_in']:
     if login_button:
         if gc:
             try:
-                sh = gc.open(SPREADSHEET_AUTH_NAME)
+                sh = gc.open_by_key(SPREADSHEET_AUTH_ID)
                 worksheet = sh.worksheet(WORKSHEET_AUTH_NAME)
                 users = worksheet.get_all_records()
-                valid_user = False
                 for user_record in users:
                     if user_record['USE'] == username and user_record['Password'] == password:
                         st.session_state['logged_in'] = True
                         st.session_state['username'] = username
-                        valid_user = True
-                        st.success(f"Chào mừng {username}!")
+                        st.success(f"Đăng nhập thành công: {username}!")
                         st.experimental_rerun()
                         break
-                if not valid_user:
+                else:
                     st.error("Tên đăng nhập hoặc mật khẩu không đúng.")
             except Exception as e:
-                st.error(f"Lỗi khi kiểm tra đăng nhập: {e}")
+                st.error(f"Đăng nhập lỗi: {e}")
 
     if forgot_password_button:
         if gc:
             try:
-                sh = gc.open(SPREADSHEET_AUTH_NAME)
+                sh = gc.open_by_key(SPREADSHEET_AUTH_ID)
                 worksheet = sh.worksheet(WORKSHEET_AUTH_NAME)
                 users = worksheet.get_all_records()
-                user_found = False
                 for user_record in users:
                     if user_record['USE'] == username:
                         send_reset_email("phamlong666@gmail.com", username, user_record['Password'])
-                        user_found = True
                         break
-                if not user_found:
-                    st.warning("Không tìm thấy tên đăng nhập này.")
+                else:
+                    st.warning("Không tìm thấy tên đăng nhập.")
             except Exception as e:
-                st.error(f"Lỗi khi xử lý quên mật khẩu: {e}")
+                st.error(f"Lỗi quên mật khẩu: {e}")
 
-    st.info("Bạn cần có tài khoản để sử dụng ứng dụng. Sheet `UserAuth` cần có cột 'USE' và 'Password'.")
+    st.info("Cần tài khoản hợp lệ để truy cập. Sheet `UserAuth` phải có cột 'USE' và 'Password'.")
 
 else:
     st.sidebar.markdown(f"**Chào mừng, {st.session_state['username']}!**")
@@ -197,6 +173,6 @@ else:
                         st.error(f"Lỗi khi lưu vào Google Sheets: {e}")
 
     if st.session_state["data"]:
-        st.markdown("### 📊 Danh sách thông tin đã ghi:")
+        st.markdown("### 📈 Danh sách thông tin đã ghi:")
         df = pd.DataFrame(st.session_state["data"])
         st.dataframe(df, use_container_width=True)
