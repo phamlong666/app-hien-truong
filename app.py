@@ -11,15 +11,28 @@ import os
 # --- Cấu hình trang ---
 st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 
-# Cấu hình Google Sheets và Google Drive (dùng file JSON riêng thay vì secrets.toml)
-SERVICE_ACCOUNT_FILE = "service_account.json"
-
-if not os.path.exists(SERVICE_ACCOUNT_FILE):
-    st.error(f"Không tìm thấy file {SERVICE_ACCOUNT_FILE}. Hãy chắc chắn bạn đã tải lên đúng file.")
-    st.stop()
-
-with open(SERVICE_ACCOUNT_FILE) as f:
-    GDRIVE_CLIENT_SECRET = json.load(f)
+# --- Nhúng nội dung của service_account.json trực tiếp vào code ---
+GDRIVE_CLIENT_SECRET = {
+  "type": "service_account",
+  "project_id": "sotaygpt",
+  "private_key_id": "152325fe3c6b07ba13dd67f4f118eb14a574030f",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC/GR2/ouQY0god\nocSRyiHRLAJ7eSFqTfz2iVPcj9mATqNGL345WZ683IxITgmK80dHmNxLr6vpoLjl\nsWmRg7RnnM2xtxBghr4zhf4bAA6sMneVC1MFPVRGGoQxouuqmhOORKKlbWHLVJ9a\nCDUNwd3JY8H0aANRDKrsiaOAyqZclJPgdfI67PNigOOwUOkaGdCVO0Mabyt0J0w8\nlkIscx6UtgCrphZYpDepHhjwR9KnqscFgcOdJ/H8m3XOhInE7JaPdzgtWIt2rGEB\neYRJXRmb39i96R9k4MBOZfpl5d3U0NOOO60og6V+cYQRPBbLkNfSTWwx17VA+52F\nMHL37PsNAgMBAAECggEADq+S8jHF/sRRg7J1ZVDX5XfQ3wVRlJZWvOmT2MzzRaGF\nebTXqfehs9jtLPdWU2fbz/xG3cgr2YIBA6HtP4IUIKxTwHcVmp1wS4xeGVwZRJGC\nUCF1KV9rtRF/nELtgohhvVq39yefTt17e5NK5HpEHaB9fNdrfdSP5Cq1toWcYFvm\nu+g/RaLXt5WJaEiMiw7sg/u9p61dx2ep/5tIumBCA/BfJwaOh688IpvHmcp/hd4+\nhKKfEACYjK1Is7sz8PV9x1rtChYeTd0ksWPfQ6lL3Dsa2vLF9nwDMnzP17swE7Bw\n2wY/jA+gPQG7KEDOcGzSTetSVEwI72SOPeYcGzrlHwKBgQDfpIiy6ZsK7Qwf6TxM\nMYVqNE6K5VNgp2vJmF2NlPW2bJamXENp0tYWxZ/cEM8boYXGiQiuapRjKSz+78Ut\nMYHdFXEswKV3XugCSASiOAgUzdQVUCffIHbEnWUIyjV5bopRcyJtbMz47uPq9OYc\njyitG0zLiLRhegqhRtlNIol13wKBgQDavysFU+gJ7vMmwDIGuptIknhJ8C70+VZ3\nn45pVNQTY7MiH7kBCfjvhCrxpHrB7wD4TxNdMMOQLzYta+eB+kxRFPCZpLR7Wk4J\njw/aSgdZ3aB1h9lZNg5a0VsY+RXuyZ6wslw85YL3P0U1lqHUdVJzg9y0TNBp1y6B\nxgKreJM0kwKBgB3oJs+mJbGkWYa67fFSfgDh1c8FM80tFmDzGy+fx+wJQWwl0m4I\nX9DTxLjtFoUfaIBQOvT4E7fe/cFp1vhgMnmaMHRHntkDvAryDoyS6aG+lKn0+iAA\ne2F3mtc+E0CV46+94dC4SADSEXCOJ2eSTWI40GA3e8e9Rkai7tQ91hwJAoGBALs1\nUIRGwxd9QOuxIR9RJQR/FiNxQz61BaNrEl5jEv1lHjHeJF8XQcz6uCYGNmkzOwlH\n47KlwTjsrtlAt+ktZZMe8KsNosjPCGp13YNcR95JJsJveTw4XyCqe+RriLHMK9vd\nScN0SRmBNKIgQG+r2NyzxXcpJlTurAa0iCRoFNOxAoGAKUQi+N5pmFwZvdcF96a4\n/T44QQC9ykkg4f9kUzd99G4ptOc1RVxSWU+kmFXrAwfwtU5XGsRjYOOvnd482Ouy\nBtwsDY6COBC6oZezVgeSm4yPWEIRf1/+RJUezZMkcJAr4fajll+tqlfSSKRTPqh3\nbyYkVZd9w07lPe3WsToSohg=\n-----END PRIVATE KEY-----\n",
+  "client_email": "gpt-sheets-access@sotaygpt.iam.gserviceaccount.com",
+  "client_id": "107334859586184185776",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/gpt-sheets-access%40sotaygpt.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
+# Cấu hình Google Sheets và Google Drive (dùng biến đã nhúng)
+# Khác với cách cũ, không cần kiểm tra sự tồn tại của file
+# SERVICE_ACCOUNT_FILE = "service_account.json"
+# if not os.path.exists(SERVICE_ACCOUNT_FILE):
+#     st.error(f"Không tìm thấy file {SERVICE_ACCOUNT_FILE}. Hãy chắc chắn bạn đã tải lên đúng file.")
+#     st.stop()
+# with open(SERVICE_ACCOUNT_FILE) as f:
+#     GDRIVE_CLIENT_SECRET = json.load(f)
 
 SPREADSHEET_NAME = 'USE'
 WORKSHEET_NAME = 'FieldDataCollection'
@@ -32,11 +45,11 @@ SENDER_PASSWORD = 'your_password'
 @st.cache_resource
 def get_all_clients():
     try:
-        creds_dict = dict(GDRIVE_CLIENT_SECRET)
-        gspread_client = gspread.service_account(filename=SERVICE_ACCOUNT_FILE)
+        # Sử dụng biến GDRIVE_CLIENT_SECRET đã nhúng trực tiếp
+        gspread_client = gspread.service_account_from_dict(GDRIVE_CLIENT_SECRET)
 
         scope = ["https://www.googleapis.com/auth/drive"]
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(SERVICE_ACCOUNT_FILE, scope)
+        credentials = ServiceAccountCredentials.from_json_keyfile_dict(GDRIVE_CLIENT_SECRET, scope)
 
         gauth = GoogleAuth()
         gauth.credentials = credentials
@@ -44,11 +57,8 @@ def get_all_clients():
 
         return gspread_client, drive_client
     except Exception as e:
-        # Kiểm tra lỗi đặc biệt liên quan đến file service account
-        if "invalid_grant" in str(e):
-            st.error(f"Lỗi xác thực: 'invalid_grant'. Có vẻ file `{SERVICE_ACCOUNT_FILE}` của bạn không hợp lệ hoặc đã hết hạn. Vui lòng tải xuống file xác thực mới từ Google Cloud và tải lên lại.")
-        else:
-            st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra file JSON và quyền truy cập.\n\nChi tiết: {e}")
+        # Xử lý lỗi xác thực chung
+        st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra file JSON và quyền truy cập.\n\nChi tiết: {e}")
         return None, None
 
 def upload_image_to_drive(drive_client, file_obj):
@@ -80,7 +90,7 @@ if 'data' not in st.session_state:
     st.session_state['data'] = []
 
 if not st.session_state['logged_in']:
-    st.markdown("###   Đăng nhập")
+    st.markdown("### 🔑 Đăng nhập")
     with st.form("login_form"):
         username = st.text_input("👤 USE", placeholder="Nhập tên đăng nhập")
         password = st.text_input("🔒 Mật khẩu", type="password", placeholder="Nhập mật khẩu")
@@ -187,4 +197,3 @@ else:
         st.markdown("### 📊 Danh sách thông tin đã ghi:")
         df = pd.DataFrame(st.session_state["data"])
         st.dataframe(df, use_container_width=True)
- 
