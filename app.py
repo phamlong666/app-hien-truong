@@ -94,7 +94,7 @@ if not st.session_state['logged_in']:
                         st.session_state['logged_in'] = True
                         st.session_state['username'] = username
                         st.success(f"Đăng nhập thành công: {username}!")
-                        st.experimental_rerun()
+                        st.rerun()
                         break
                 else:
                     st.error("Tên đăng nhập hoặc mật khẩu không đúng.")
@@ -123,7 +123,7 @@ else:
     if st.sidebar.button("Đăng xuất"):
         st.session_state['logged_in'] = False
         st.session_state['username'] = None
-        st.experimental_rerun()
+        st.rerun()
 
     with st.form("field_form", clear_on_submit=True):
         st.markdown("### 📝 Nhập thông tin hiện trường")
