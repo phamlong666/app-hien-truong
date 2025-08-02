@@ -24,7 +24,7 @@ except KeyError:
 # --- Cấu hình Google Sheets ---
 SPREADSHEET_NAME = 'USE'
 WORKSHEET_NAME = 'FieldDataCollection'
-SPREADSHEET_AUTH_ID = '1kjGU65kGc1j8SBvPBy4Mw82aBgTfybSy'
+SPREADSHEET_AUTH_ID = '1IXMcfbHgRuRJsU5Rk6EVnnFKJ9HE-XbmJ2U5Jz-riYY'
 WORKSHEET_AUTH_NAME = 'UserAuth'
 
 @st.cache_resource
@@ -76,7 +76,7 @@ if not st.session_state['logged_in']:
     st.markdown("### 🔑 Đăng nhập")
     with st.form("login_form"):
         username = st.text_input("👤 USE", placeholder="Nhập tên đăng nhập")
-        password = st.text_input("🔐 Mật khẩu", type="password", placeholder="Nhập mật khẩu")
+        password = st.text_input("🔒 Mật khẩu", type="password", placeholder="Nhập mật khẩu")
         col1, col2 = st.columns(2)
         with col1:
             login_button = st.form_submit_button("✅ Đăng nhập")
@@ -173,6 +173,6 @@ else:
                         st.error(f"Lỗi khi lưu vào Google Sheets: {e}")
 
     if st.session_state["data"]:
-        st.markdown("### 📈 Danh sách thông tin đã ghi:")
+        st.markdown("### 📊 Danh sách thông tin đã ghi:")
         df = pd.DataFrame(st.session_state["data"])
         st.dataframe(df, use_container_width=True)
