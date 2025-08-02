@@ -5,6 +5,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
+import os
 
 # Cấu hình Google Sheets và Google Drive
 # Vui lòng thay thế 'your_service_account_key.json' bằng tên file key của bạn.
@@ -23,6 +24,11 @@ SENDER_PASSWORD = 'your_password' # Thay bằng mật khẩu ứng dụng của 
 @st.cache_resource
 def get_all_clients():
     try:
+        # Kiểm tra sự tồn tại của file key
+        if not os.path.exists(GDRIVE_CLIENT_SECRET):
+            st.error(f"Lỗi: Không tìm thấy file '{GDRIVE_CLIENT_SECRET}'. Vui lòng đảm bảo file này nằm trong cùng thư mục với app.py")
+            return None, None
+            
         # Sử dụng service account để xác thực
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         creds = ServiceAccountCredentials.from_json_keyfile_name(GDRIVE_CLIENT_SECRET, scope)
