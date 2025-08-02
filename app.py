@@ -14,8 +14,7 @@ st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
 # Cấu hình Google Sheets và Google Drive
 # Lấy key từ Streamlit secrets
 try:
-    import json
-GDRIVE_CLIENT_SECRET = json.loads(st.secrets["gdrive_service_account"])
+    GDRIVE_CLIENT_SECRET = json.loads(st.secrets["gdrive_service_account"])
 except KeyError:
     st.error("Lỗi: Không tìm thấy key 'gdrive_service_account' trong Streamlit secrets. "
              "Vui lòng cấu hình secrets theo hướng dẫn.")
@@ -34,17 +33,11 @@ SENDER_PASSWORD = 'your_password' # Thay bằng mật khẩu ứng dụng của 
 @st.cache_resource
 def get_all_clients():
     try:
-        # Lấy service account key từ Streamlit secrets dưới dạng dictionary
         creds_dict = dict(GDRIVE_CLIENT_SECRET)
-
-        # Kết nối đến Google Sheets bằng phương thức service_account_from_dict
         gspread_client = gspread.service_account_from_dict(creds_dict)
-
-        # Cấu hình và kết nối đến Google Drive bằng cách sử dụng dictionary key
         gauth = GoogleAuth()
         gauth.AuthFromDict(creds_dict)
         drive_client = GoogleDrive(gauth)
-
         return gspread_client, drive_client
     except Exception as e:
         st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra secret và quyền truy cập. Lỗi chi tiết: {e}")
@@ -55,45 +48,34 @@ def upload_image_to_drive(drive_client, file_obj):
     if not drive_client:
         return None
     try:
-        # Tạo file tạm thời để pydrive có thể đọc
         with open(file_obj.name, "wb") as f:
             f.write(file_obj.getbuffer())
-
-        # Tạo file trên Google Drive
         gfile = drive_client.CreateFile({'title': file_obj.name})
         gfile.SetContentFile(file_obj.name)
         gfile.Upload()
-
-        # Xóa file tạm thời sau khi upload
         os.remove(file_obj.name)
-
-        # Trả về link để xem hoặc chia sẻ
         return gfile['alternateLink']
     except Exception as e:
         st.error(f"Lỗi tải ảnh lên Google Drive: {e}")
         return None
 
-# Hàm để gửi email (được làm đơn giản cho mục đích minh họa)
+# Hàm để gửi email (giả lập)
 def send_reset_email(to_email, username, password):
-    # Đây là một hàm giả lập, bạn cần dùng thư viện như smtplib để gửi email thực tế
     st.info(f"Mật khẩu của bạn là: {password}. Email đã được gửi đến {to_email}")
 
 # Khởi tạo client
 gc, drive = get_all_clients()
 
-# --- Cấu hình tiêu đề và các phần khác ---
+# --- Giao diện chính ---
 st.title("📋 Ứng dụng thu thập thông tin hiện trường")
 st.markdown("**Phiên bản mẫu – Mắt Nâu hỗ trợ Đội quản lý Điện lực khu vực Định Hóa**")
 
-# Khởi tạo session state cho trạng thái đăng nhập
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
-# Khởi tạo session state cho dữ liệu
 if "data" not in st.session_state:
     st.session_state["data"] = []
 
-# Màn hình đăng nhập
 if not st.session_state['logged_in']:
     st.markdown("### 🔑 Đăng nhập")
     with st.form("login_form"):
@@ -106,7 +88,6 @@ if not st.session_state['logged_in']:
             forgot_password_button = st.form_submit_button("❓ Quên mật khẩu")
 
     if login_button:
-        # Kiểm tra thông tin đăng nhập
         if gc:
             try:
                 sh = gc.open(SPREADSHEET_AUTH_NAME)
@@ -146,19 +127,16 @@ if not st.session_state['logged_in']:
                 st.error(f"Không tìm thấy Google Sheet xác thực: {SPREADSHEET_AUTH_NAME}")
             except Exception as e:
                 st.error(f"Lỗi khi xử lý quên mật khẩu: {e}")
-        
+
     st.info("Để sử dụng tính năng này, bạn cần tạo một Google Sheet tên là 'UserAuth' với hai cột 'USE' và 'Password'.")
 
-# Màn hình chính sau khi đăng nhập
 else:
-    # Hiển thị thông tin người dùng và nút đăng xuất
     st.sidebar.markdown(f"**Chào mừng, {st.session_state['username']}!**")
     if st.sidebar.button("Đăng xuất"):
         st.session_state['logged_in'] = False
         st.session_state['username'] = None
         st.experimental_rerun()
 
-    # --- Form nhập liệu ---
     with st.form("field_form", clear_on_submit=True):
         st.markdown("### 📝 Nhập thông tin")
         col1, col2 = st.columns(2)
@@ -178,7 +156,6 @@ else:
             if not ten_tuyen or not nguoi_thuchien:
                 st.warning("⚠️ Vui lòng nhập đầy đủ Tên tuyến và Người thực hiện.")
             else:
-                # Tải ảnh lên Google Drive và lấy link
                 image_links = []
                 if drive and hinhanh_files:
                     for file in hinhanh_files:
@@ -186,7 +163,6 @@ else:
                         if link:
                             image_links.append(link)
 
-                # Tạo bản ghi
                 record = {
                     "Tên tuyến/TBA": ten_tuyen,
                     "Người thực hiện": nguoi_thuchien,
@@ -196,11 +172,9 @@ else:
                     "Ảnh": ", ".join(image_links) if image_links else ""
                 }
 
-                # Thêm bản ghi vào session state
                 st.session_state["data"].append(record)
                 st.success("✅ Đã ghi nhận thông tin hiện trường!")
 
-                # Lưu bản ghi vào Google Sheets
                 if gc:
                     try:
                         sh = gc.open(SPREADSHEET_NAME)
@@ -212,7 +186,6 @@ else:
                     except Exception as e:
                         st.error(f"Lỗi khi lưu vào Google Sheets: {e}")
 
-    # --- Hiển thị dữ liệu đã nhập ---
     if st.session_state["data"]:
         st.markdown("### 📊 Danh sách thông tin đã ghi:")
         df = pd.DataFrame(st.session_state["data"])
