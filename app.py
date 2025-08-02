@@ -4,6 +4,7 @@ from datetime import datetime
 import gspread
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
+import json
 
 # --- Cấu hình trang ---
 # Lệnh st.set_page_config() phải là lệnh Streamlit đầu tiên trong script
@@ -54,7 +55,10 @@ def upload_image_to_drive(drive_client, file_obj):
     try:
         # Tạo file trên Google Drive
         gfile = drive_client.CreateFile({'title': file_obj.name})
-        gfile.SetContentFile(file_obj)
+        # SetContentFile không hoạt động với streamlit file_uploader object, cần dùng SetContentString
+        # hoặc đọc file obj thành chuỗi byte trước. SetContentString là cách đơn giản hơn.
+        # file_obj.read() sẽ đọc toàn bộ nội dung file và SetContentString sẽ chấp nhận nó.
+        gfile.SetContentString(file_obj.read()) 
         gfile.Upload()
         # Trả về link để xem hoặc chia sẻ
         return gfile['alternateLink']
