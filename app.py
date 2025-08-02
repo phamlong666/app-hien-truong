@@ -2,10 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
-import json
 
 # --- Cấu hình trang ---
 # Lệnh st.set_page_config() phải là lệnh Streamlit đầu tiên trong script
@@ -33,20 +31,17 @@ SENDER_PASSWORD = 'your_password' # Thay bằng mật khẩu ứng dụng của 
 @st.cache_resource
 def get_all_clients():
     try:
-        # Sử dụng nội dung từ secret để xác thực
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        # Tạo tệp tin tạm thời từ secret
-        creds_dict = GDRIVE_CLIENT_SECRET
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-        
-        # Kết nối đến Google Sheets
-        gspread_client = gspread.authorize(creds)
-        
-        # Kết nối đến Google Drive
+        # Lấy service account key từ Streamlit secrets dưới dạng dictionary
+        creds_dict = dict(GDRIVE_CLIENT_SECRET)
+
+        # Kết nối đến Google Sheets bằng phương thức service_account_from_dict
+        gspread_client = gspread.service_account_from_dict(creds_dict)
+
+        # Cấu hình và kết nối đến Google Drive bằng cách sử dụng dictionary key
         gauth = GoogleAuth()
-        gauth.credentials = creds
+        gauth.AuthFromDict(creds_dict)
         drive_client = GoogleDrive(gauth)
-        
+
         return gspread_client, drive_client
     except Exception as e:
         st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra secret và quyền truy cập. Lỗi chi tiết: {e}")
@@ -164,7 +159,7 @@ else:
             loaicv = st.selectbox("🔧 Loại công việc", ["Kiểm tra", "Sửa chữa", "Ghi chỉ số", "Khác"])
 
         ghichu = st.text_area("📝 Ghi chú hiện trường", height=80)
-        hinhanh_files = st.file_uploader("  Tải ảnh hiện trường", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+        hinhanh_files = st.file_uploader("📷 Tải ảnh hiện trường", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
         submitted = st.form_submit_button("✅ Ghi nhận thông tin")
 
@@ -211,4 +206,3 @@ else:
         st.markdown("### 📊 Danh sách thông tin đã ghi:")
         df = pd.DataFrame(st.session_state["data"])
         st.dataframe(df, use_container_width=True)
- 
