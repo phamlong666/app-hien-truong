@@ -7,6 +7,7 @@ from pydrive2.drive import GoogleDrive
 from oauth2client.service_account import ServiceAccountCredentials
 import json
 import os
+import re
 
 # --- Cấu hình trang ---
 st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
@@ -16,7 +17,8 @@ GDRIVE_CLIENT_SECRET = {
   "type": "service_account",
   "project_id": "sotaygpt",
   "private_key_id": "152325fe3c6b07ba13dd67f4f118eb14a574030f",
-  # Đã thay đổi cách biểu diễn chuỗi private_key để đảm bảo tính toàn vẹn
+  # Sử dụng raw string để đảm bảo chuỗi khóa riêng tư được xử lý chính xác
+  # Chỉnh sửa lại cách biểu diễn chuỗi private_key để đảm bảo tính toàn vẹn
   "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC/GR2/ouQY0god\nnocSRyiHRLAJ7eSFqTfz2iVPcj9mATqNGL345WZ683IxITgmK80dHmNxLr6vpoLjl\nsWmRg7RnnM2xtxBghr4zhf4bAA6sMneVC1MFPVRGGoQxouuqmhOORKKlbWHLVJ9a\nCDUNwd3JY8H0aANRDKrsiaOAyqZclJPgdfI67PNigOOwUOkaGdCVO0Mabyt0J0w8\nlkIscx6UtgCrphZYpDepHhjwR9KnqscFgcOdJ/H8m3XOhInE7JaPdzgtWIt2rGEB\neYRJXRmb39i96R9k4MBOZfpl5d3U0NOOO60og6V+cYQRPBbLkNfSTWwx17VA+52F\nMHL37PsNAgMBAAECggEADq+S8jHF/sRRg7J1ZVDX5XfQ3wVRlJZWvOmT2MzzRaGF\nebTXqfehs9jtLPdWU2fbz/xG3cgr2YIBA6HtP4IUIKxTwHcVmp1wS4xeGVwZRJGC\nUCF1KV9rtRF/nELtgohhvVq39yefTt17e5NK5HpEHaB9fNdrfdSP5Cq1toWcYFvm\nu+g/RaLXt5WJaEiMiw7sg/u9p61dx2ep/5tIumBCA/BfJwaOh688IpvHmcp/hd4+\nhKKfEACYjK1Is7sz8PV9x1rtChYeTd0ksWPfQ6lL3Dsa2vLF9nwDMnzP17swE7Bw\n2wY/jA+gPQG7KEDOcGzSTetSVEwI72SOPeYcGzrlHwKBgQDfpIiy6ZsK7Qwf6TxM\nMYVqNE6K5VNgp2vJmF2NlPW2bJamXENp0tYWxZ/cEM8boYXGiQiuapRjKSz+78Ut\nMYHdFXEswKV3XugCSASiOAgUzdQVUCffIHbEnWUIyjV5bopRcyJtbMz47uPq9OYc\njyitG0zLiLRhegqhRtlNIol13wKBgQDavysFU+gJ7vMmwDIGuptIknhJ8C70+VZ3\nnn45pVNQTY7MiH7kBCfjvhCrxpHrB7wD4TxNdMMOQLzYta+eB+kxRFPCZpLR7Wk4J\nnjw/aSgdZ3aB1h9lZNg5a0VsY+RXuyZ6wslw85YL3P0U1lqHUdVJzg9y0TNBp1y6B\nnxgKreJM0kwKBgB3oJs+mJbGkWYa67fFSfgDh1c8FM80tFmDzGy+fx+wJQWwl0m4I\nnX9DTxLjtFoUfaIBQOvT4E7fe/cFp1vhgMnmaMHRHntkDvAryDoyS6aG+lKn0+iAA\nne2F3mtc+E0CV46+94dC4SADSEXCOJ2eSTWI40GA3e8e9Rkai7tQ91hwJAoGBALs1\nnUIRGwxd9QOuxIR9RJQR/FiNxQz61BaNrEl5jEv1lHjHeJF8XQcz6uCYGNmkzOwlH\nn47KlwTjsrtlAt+ktZZMe8KsNosjPCGp13YNcR95JJsJveTw4XyCqe+RriLHMK9vd\nScN0SRmBNKIgQG+r2NyzxXcpJlTurAa0iCRoFNOxAoGAKUQi+N5pmFwZvdcF96a4\nn/T44QQC9ykkg4f9kUzd99G4ptOc1RVxSWU+kmFXrAwfwtU5XGsRjYOOvnd482Ouy\nBtwsDY6COBC6oZezVgeSm4yPWEIRf1/+RJUezZMkcJAr4fajll+tqlfSSKRTPqh3\nbyYkVZd9w07lPe3WsToSohg=\n-----END PRIVATE KEY-----",
   "client_email": "gpt-sheets-access@sotaygpt.iam.gserviceaccount.com",
   "client_id": "107334859586184185776",
@@ -46,13 +48,18 @@ SENDER_PASSWORD = 'your_password'
 @st.cache_resource
 def get_all_clients():
     try:
-        # Sử dụng biến GDRIVE_CLIENT_SECRET đã nhúng trực tiếp
+        # Thay thế các ký tự xuống dòng `\n` trong khóa riêng tư bằng ký tự xuống dòng thực tế
+        # Điều này rất quan trọng để đảm bảo khóa được định dạng chính xác
+        client_secret_with_newlines = GDRIVE_CLIENT_SECRET.copy()
+        client_secret_with_newlines['private_key'] = client_secret_with_newlines['private_key'].replace('\\n', '\n')
+        
+        # Sử dụng biến client_secret đã được xử lý để khởi tạo client
         # Gspread client
-        gspread_client = gspread.service_account_from_dict(GDRIVE_CLIENT_SECRET)
+        gspread_client = gspread.service_account_from_dict(client_secret_with_newlines)
 
         # PyDrive client
         scope = ["https://www.googleapis.com/auth/drive"]
-        credentials = ServiceAccountCredentials.from_json_keyfile_dict(GDRIVE_CLIENT_SECRET, scope)
+        credentials = ServiceAccountCredentials.from_json_keyfile_dict(client_secret_with_newlines, scope)
 
         gauth = GoogleAuth()
         gauth.credentials = credentials
