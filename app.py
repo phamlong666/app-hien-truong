@@ -10,32 +10,22 @@ import os
 import re
 
 # --- Cấu hình trang ---
-st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
+st.set_page_config(page_title="Thu thập thông tin hiện trường", layout="centered")
 
-# --- Nhúng nội dung của service_account.json trực tiếp vào code ---
-GDRIVE_CLIENT_SECRET = {
-  "type": "service_account",
-  "project_id": "sotaygpt",
-  "private_key_id": "152325fe3c6b07ba13dd67f4f118eb14a574030f",
-  # Sử dụng raw string để đảm bảo chuỗi khóa riêng tư được xử lý chính xác
-  # Chỉnh sửa lại cách biểu diễn chuỗi private_key để đảm bảo tính toàn vẹn
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC/GR2/ouQY0god\nnocSRyiHRLAJ7eSFqTfz2iVPcj9mATqNGL345WZ683IxITgmK80dHmNxLr6vpoLjl\nsWmRg7RnnM2xtxBghr4zhf4bAA6sMneVC1MFPVRGGoQxouuqmhOORKKlbWHLVJ9a\nCDUNwd3JY8H0aANRDKrsiaOAyqZclJPgdfI67PNigOOwUOkaGdCVO0Mabyt0J0w8\nlkIscx6UtgCrphZYpDepHhjwR9KnqscFgcOdJ/H8m3XOhInE7JaPdzgtWIt2rGEB\neYRJXRmb39i96R9k4MBOZfpl5d3U0NOOO60og6V+cYQRPBbLkNfSTWwx17VA+52F\nMHL37PsNAgMBAAECggEADq+S8jHF/sRRg7J1ZVDX5XfQ3wVRlJZWvOmT2MzzRaGF\nebTXqfehs9jtLPdWU2fbz/xG3cgr2YIBA6HtP4IUIKxTwHcVmp1wS4xeGVwZRJGC\nUCF1KV9rtRF/nELtgohhvVq39yefTt17e5NK5HpEHaB9fNdrfdSP5Cq1toWcYFvm\nu+g/RaLXt5WJaEiMiw7sg/u9p61dx2ep/5tIumBCA/BfJwaOh688IpvHmcp/hd4+\nhKKfEACYjK1Is7sz8PV9x1rtChYeTd0ksWPfQ6lL3Dsa2vLF9nwDMnzP17swE7Bw\n2wY/jA+gPQG7KEDOcGzSTetSVEwI72SOPeYcGzrlHwKBgQDfpIiy6ZsK7Qwf6TxM\nMYVqNE6K5VNgp2vJmF2NlPW2bJamXENp0tYWxZ/cEM8boYXGiQiuapRjKSz+78Ut\nMYHdFXEswKV3XugCSASiOAgUzdQVUCffIHbEnWUIyjV5bopRcyJtbMz47uPq9OYc\njyitG0zLiLRhegqhRtlNIol13wKBgQDavysFU+gJ7vMmwDIGuptIknhJ8C70+VZ3\nnn45pVNQTY7MiH7kBCfjvhCrxpHrB7wD4TxNdMMOQLzYta+eB+kxRFPCZpLR7Wk4J\nnjw/aSgdZ3aB1h9lZNg5a0VsY+RXuyZ6wslw85YL3P0U1lqHUdVJzg9y0TNBp1y6B\nnxgKreJM0kwKBgB3oJs+mJbGkWYa67fFSfgDh1c8FM80tFmDzGy+fx+wJQWwl0m4I\nnX9DTxLjtFoUfaIBQOvT4E7fe/cFp1vhgMnmaMHRHntkDvAryDoyS6aG+lKn0+iAA\nne2F3mtc+E0CV46+94dC4SADSEXCOJ2eSTWI40GA3e8e9Rkai7tQ91hwJAoGBALs1\nnUIRGwxd9QOuxIR9RJQR/FiNxQz61BaNrEl5jEv1lHjHeJF8XQcz6uCYGNmkzOwlH\nn47KlwTjsrtlAt+ktZZMe8KsNosjPCGp13YNcR95JJsJveTw4XyCqe+RriLHMK9vd\nScN0SRmBNKIgQG+r2NyzxXcpJlTurAa0iCRoFNOxAoGAKUQi+N5pmFwZvdcF96a4\nn/T44QQC9ykkg4f9kUzd99G4ptOc1RVxSWU+kmFXrAwfwtU5XGsRjYOOvnd482Ouy\nBtwsDY6COBC6oZezVgeSm4yPWEIRf1/+RJUezZMkcJAr4fajll+tqlfSSKRTPqh3\nbyYkVZd9w07lPe3WsToSohg=\n-----END PRIVATE KEY-----",
-  "client_email": "gpt-sheets-access@sotaygpt.iam.gserviceaccount.com",
-  "client_id": "107334859586184185776",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/gpt-sheets-access%40sotaygpt.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-}
-# Cấu hình Google Sheets và Google Drive (dùng biến đã nhúng)
-# Khác với cách cũ, không cần kiểm tra sự tồn tại của file
-# SERVICE_ACCOUNT_FILE = "service_account.json"
-# if not os.path.exists(SERVICE_ACCOUNT_FILE):
-#     st.error(f"Không tìm thấy file {SERVICE_ACCOUNT_FILE}. Hãy chắc chắn bạn đã tải lên đúng file.")
-#     st.stop()
-# with open(SERVICE_ACCOUNT_FILE) as f:
-#     GDRIVE_CLIENT_SECRET = json.load(f)
+# --- Lấy thông tin xác thực từ Streamlit Secrets ---
+# Đây là cách được khuyến nghị để quản lý thông tin nhạy cảm
+try:
+    gdrive_secrets = st.secrets["gdrive_service_account"]
+
+    # Đảm bảo chuỗi private_key có các ký tự xuống dòng thực tế
+    # Hàm này sẽ thay thế các ký tự '\n' trong chuỗi thành các ký tự xuống dòng thực tế
+    gdrive_secrets["private_key"] = gdrive_secrets["private_key"].replace("\\n", "\n")
+
+except KeyError:
+    st.error("Lỗi: Không tìm thấy 'gdrive_service_account' trong Streamlit Secrets. "
+             "Vui lòng cấu hình các bí mật của bạn theo đúng định dạng TOML.")
+    st.stop()
+
 
 SPREADSHEET_NAME = 'USE'
 WORKSHEET_NAME = 'FieldDataCollection'
@@ -48,18 +38,13 @@ SENDER_PASSWORD = 'your_password'
 @st.cache_resource
 def get_all_clients():
     try:
-        # Thay thế các ký tự xuống dòng `\n` trong khóa riêng tư bằng ký tự xuống dòng thực tế
-        # Điều này rất quan trọng để đảm bảo khóa được định dạng chính xác
-        client_secret_with_newlines = GDRIVE_CLIENT_SECRET.copy()
-        client_secret_with_newlines['private_key'] = client_secret_with_newlines['private_key'].replace('\\n', '\n')
-        
-        # Sử dụng biến client_secret đã được xử lý để khởi tạo client
         # Gspread client
-        gspread_client = gspread.service_account_from_dict(client_secret_with_newlines)
+        # Sử dụng service_account_from_dict để đọc trực tiếp từ dict
+        gspread_client = gspread.service_account_from_dict(gdrive_secrets)
 
         # PyDrive client
         scope = ["https://www.googleapis.com/auth/drive"]
-        credentials = ServiceAccountCredentials.from_json_keyfile_dict(client_secret_with_newlines, scope)
+        credentials = ServiceAccountCredentials.from_json_keyfile_dict(gdrive_secrets, scope)
 
         gauth = GoogleAuth()
         gauth.credentials = credentials
@@ -67,33 +52,24 @@ def get_all_clients():
 
         return gspread_client, drive_client
     except Exception as e:
-        # Xử lý lỗi xác thực chung
-        st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra file JSON và quyền truy cập.\n\nChi tiết: {e}")
+        st.error(f"Lỗi kết nối Google API. Vui lòng kiểm tra lại 'private_key' trong Secrets.\n\nChi tiết: {e}")
         return None, None
 
 def upload_image_to_drive(drive_client, file_obj):
     if not drive_client:
         return None
     try:
-        # Streamlit file uploader returns an in-memory file object
-        # We need to save it to a temporary file for pydrive to use
         temp_file_path = os.path.join("temp", file_obj.name)
-        
-        # Create 'temp' directory if it doesn't exist
         os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
-        
         with open(temp_file_path, "wb") as f:
             f.write(file_obj.getbuffer())
         
-        # Tạo file trên Google Drive
         gfile = drive_client.CreateFile({'title': file_obj.name})
         gfile.SetContentFile(temp_file_path)
         gfile.Upload()
         
-        # Xóa file tạm sau khi upload
         os.remove(temp_file_path)
         
-        # Trả về link chia sẻ của file
         return gfile['alternateLink']
     except Exception as e:
         st.error(f"Lỗi tải ảnh lên Google Drive: {e}")
