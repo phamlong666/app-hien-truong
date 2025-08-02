@@ -1,8 +1,8 @@
 streamlit
+pandas
 gspread
 oauth2client
-pydrive
-pandas
+pydrive2
 Pillow
 folium
 streamlit_folium
