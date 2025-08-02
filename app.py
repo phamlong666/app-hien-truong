@@ -7,6 +7,10 @@ from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 import os
 
+# --- Cấu hình trang ---
+# Lệnh st.set_page_config() phải là lệnh Streamlit đầu tiên trong script
+st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
+
 # Cấu hình Google Sheets và Google Drive
 # Vui lòng thay thế 'your_service_account_key.json' bằng tên file key của bạn.
 # Bạn cần tạo file này từ Google Cloud Console và chia sẻ quyền truy cập Google Sheet cho email của service account đó.
@@ -69,8 +73,7 @@ def send_reset_email(to_email, username, password):
 # Khởi tạo client
 gc, drive = get_all_clients()
 
-# --- Cấu hình trang ---
-st.set_page_config(page_title="Thu thập hiện trường", layout="centered")
+# --- Cấu hình tiêu đề và các phần khác ---
 st.title("📋 Ứng dụng thu thập thông tin hiện trường")
 st.markdown("**Phiên bản mẫu – Mắt Nâu hỗ trợ Đội quản lý Điện lực khu vực Định Hóa**")
 
@@ -152,7 +155,7 @@ else:
         st.markdown("### 📝 Nhập thông tin")
         col1, col2 = st.columns(2)
         with col1:
-            ten_tuyen = st.text_input("  Tên tuyến / TBA")
+            ten_tuyen = st.text_input("🔌 Tên tuyến / TBA")
             nguoi_thuchien = st.text_input("👷 Người thực hiện", value=st.session_state['username'])
         with col2:
             thoigian = st.date_input("🗓️ Thời gian ghi nhận", value=datetime.now())
@@ -206,4 +209,3 @@ else:
         st.markdown("### 📊 Danh sách thông tin đã ghi:")
         df = pd.DataFrame(st.session_state["data"])
         st.dataframe(df, use_container_width=True)
- 
