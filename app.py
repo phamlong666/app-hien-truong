@@ -47,8 +47,10 @@ SENDER_PASSWORD = 'your_password'
 def get_all_clients():
     try:
         # Sử dụng biến GDRIVE_CLIENT_SECRET đã nhúng trực tiếp
+        # Gspread client
         gspread_client = gspread.service_account_from_dict(GDRIVE_CLIENT_SECRET)
 
+        # PyDrive client
         scope = ["https://www.googleapis.com/auth/drive"]
         credentials = ServiceAccountCredentials.from_json_keyfile_dict(GDRIVE_CLIENT_SECRET, scope)
 
@@ -66,12 +68,25 @@ def upload_image_to_drive(drive_client, file_obj):
     if not drive_client:
         return None
     try:
-        with open(file_obj.name, "wb") as f:
+        # Streamlit file uploader returns an in-memory file object
+        # We need to save it to a temporary file for pydrive to use
+        temp_file_path = os.path.join("temp", file_obj.name)
+        
+        # Create 'temp' directory if it doesn't exist
+        os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
+        
+        with open(temp_file_path, "wb") as f:
             f.write(file_obj.getbuffer())
+        
+        # Tạo file trên Google Drive
         gfile = drive_client.CreateFile({'title': file_obj.name})
-        gfile.SetContentFile(file_obj.name)
+        gfile.SetContentFile(temp_file_path)
         gfile.Upload()
-        os.remove(file_obj.name)
+        
+        # Xóa file tạm sau khi upload
+        os.remove(temp_file_path)
+        
+        # Trả về link chia sẻ của file
         return gfile['alternateLink']
     except Exception as e:
         st.error(f"Lỗi tải ảnh lên Google Drive: {e}")
@@ -80,6 +95,7 @@ def upload_image_to_drive(drive_client, file_obj):
 def send_reset_email(to_email, username, password):
     st.info(f"Mật khẩu của bạn là: {password}. Email đã được gửi đến {to_email}")
 
+# Khởi tạo các client
 gc, drive = get_all_clients()
 
 st.title("📋 Ứng dụng thu thập thông tin hiện trường")
