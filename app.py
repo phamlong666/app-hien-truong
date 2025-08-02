@@ -15,8 +15,11 @@ st.set_page_config(page_title="Thu thập thông tin hiện trường", layout="
 # --- Lấy thông tin xác thực từ Streamlit Secrets ---
 # Đây là cách được khuyến nghị để quản lý thông tin nhạy cảm
 try:
-    gdrive_secrets = st.secrets["gdrive_service_account"]
-
+    gdrive_secrets_read_only = st.secrets["gdrive_service_account"]
+    
+    # Tạo một bản sao có thể chỉnh sửa của đối tượng secrets
+    gdrive_secrets = dict(gdrive_secrets_read_only)
+    
     # Đảm bảo chuỗi private_key có các ký tự xuống dòng thực tế
     # Hàm này sẽ thay thế các ký tự '\n' trong chuỗi thành các ký tự xuống dòng thực tế
     gdrive_secrets["private_key"] = gdrive_secrets["private_key"].replace("\\n", "\n")
@@ -39,7 +42,7 @@ SENDER_PASSWORD = 'your_password'
 def get_all_clients():
     try:
         # Gspread client
-        # Sử dụng service_account_from_dict để đọc trực tiếp từ dict
+        # Sử dụng service_account_from_dict để đọc trực tiếp từ dict đã được xử lý
         gspread_client = gspread.service_account_from_dict(gdrive_secrets)
 
         # PyDrive client
